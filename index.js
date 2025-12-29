@@ -2,7 +2,7 @@ const { makeWASocket, useMultiFileAuthState, DisconnectReason } = require('@whis
 const { Boom } = require('@hapi/boom');
 const express = require('express');
 const axios = require('axios');
-const qrcode = require('qrcode-terminal'); // Importante para dibujar el QR
+const qrcode = require('qrcode-terminal'); 
 const pino = require('pino');
 
 const app = express();
@@ -20,7 +20,7 @@ async function connectToWhatsApp() {
     
     sock = makeWASocket({
         auth: state,
-        printQRInTerminal: false, // LO PONEMOS EN FALSO PARA HACERLO MANUAL
+        printQRInTerminal: false, // ESTO DEBE ESTAR EN FALSE
         logger: pino({ level: 'silent' }),
         browser: ["Colmado Bot", "Chrome", "1.0"]
     });
@@ -30,7 +30,7 @@ async function connectToWhatsApp() {
     sock.ev.on('connection.update', (update) => {
         const { connection, lastDisconnect, qr } = update;
         
-        // AQUÍ ESTÁ LA CORRECCIÓN: DIBUJAR EL QR MANUALMENTE
+        // ESTA PARTE DIBUJA EL QR MANUALMENTE
         if (qr) {
             console.log('\n================================================');
             console.log('   ESCANEA ESTE CÓDIGO QR CON TU WHATSAPP:');
@@ -76,7 +76,6 @@ async function connectToWhatsApp() {
     });
 }
 
-// API PARA RESPONDER
 app.post('/send-message', async (req, res) => {
     const { telefono, mensaje } = req.body;
     if (!sock) return res.status(500).json({ status: 'error', msg: 'WhatsApp no conectado' });
