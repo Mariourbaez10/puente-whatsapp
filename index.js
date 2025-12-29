@@ -2,14 +2,15 @@ const { makeWASocket, useMultiFileAuthState, DisconnectReason } = require('@whis
 const { Boom } = require('@hapi/boom');
 const express = require('express');
 const axios = require('axios');
-const qrcode = require('qrcode-terminal');
+const qrcode = require('qrcode-terminal'); // Importante para dibujar el QR
 const pino = require('pino');
 
 const app = express();
 app.use(express.json());
 
-// CONFIGURACIÓN: CAMBIA ESTO POR TU URL DE PYTHONANYWHERE
-const PYTHON_URL = 'http://TU_USUARIO.pythonanywhere.com/webhook/whatsapp'; 
+// --- CONFIGURACIÓN ---
+// Cambia esto por TU usuario real de PythonAnywhere
+const PYTHON_URL = 'http://mariourbaez10.pythonanywhere.com/webhook/whatsapp'; 
 const PORT = process.env.PORT || 3000;
 
 let sock;
@@ -19,7 +20,7 @@ async function connectToWhatsApp() {
     
     sock = makeWASocket({
         auth: state,
-        printQRInTerminal: true, // Esto imprimirá el QR en los logs de Render
+        printQRInTerminal: false, // LO PONEMOS EN FALSO PARA HACERLO MANUAL
         logger: pino({ level: 'silent' }),
         browser: ["Colmado Bot", "Chrome", "1.0"]
     });
@@ -29,9 +30,12 @@ async function connectToWhatsApp() {
     sock.ev.on('connection.update', (update) => {
         const { connection, lastDisconnect, qr } = update;
         
+        // AQUÍ ESTÁ LA CORRECCIÓN: DIBUJAR EL QR MANUALMENTE
         if (qr) {
-            console.log('ESCANA ESTE QR:', qr);
-            // Render a veces no muestra el QR gráfico bien, pero veremos el código
+            console.log('\n================================================');
+            console.log('   ESCANEA ESTE CÓDIGO QR CON TU WHATSAPP:');
+            console.log('================================================\n');
+            qrcode.generate(qr, { small: true });
         }
 
         if (connection === 'close') {
@@ -41,7 +45,7 @@ async function connectToWhatsApp() {
                 connectToWhatsApp();
             }
         } else if (connection === 'open') {
-            console.log('✅ ¡CONECTADO A WHATSAPP!');
+            console.log('\n✅ ¡CONECTADO A WHATSAPP EXITOSAMENTE!\n');
         }
     });
 
@@ -51,7 +55,6 @@ async function connectToWhatsApp() {
             const remoto = msg.key.remoteJid;
             const telefono = remoto.split('@')[0];
             
-            // Extraer texto
             const texto = msg.message.conversation || 
                           msg.message.extendedTextMessage?.text || 
                           msg.message.imageMessage?.caption || "";
@@ -59,7 +62,6 @@ async function connectToWhatsApp() {
             if (texto) {
                 console.log(`Mensaje de ${telefono}: ${texto}`);
                 
-                // ENVIAR A TU CEREBRO PYTHON (PYTHONANYWHERE)
                 try {
                     await axios.post(PYTHON_URL, {
                         telefono: telefono,
@@ -74,10 +76,9 @@ async function connectToWhatsApp() {
     });
 }
 
-// API PARA QUE PYTHON PUEDA RESPONDER
+// API PARA RESPONDER
 app.post('/send-message', async (req, res) => {
     const { telefono, mensaje } = req.body;
-    
     if (!sock) return res.status(500).json({ status: 'error', msg: 'WhatsApp no conectado' });
 
     try {
